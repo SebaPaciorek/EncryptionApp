@@ -16,8 +16,10 @@ class CryptoManager {
         load(null)
     }
 
-    private val encryptCipher = Cipher.getInstance(TRANSFORMATION).apply {
-        init(Cipher.ENCRYPT_MODE, createKey())
+    private fun initEncryptCipher(): Cipher? {
+        return Cipher.getInstance(TRANSFORMATION).apply {
+            init(Cipher.ENCRYPT_MODE, createKey())
+        }
     }
 
     private fun getDecryptCipherForIv(iv: ByteArray): Cipher {
@@ -48,14 +50,22 @@ class CryptoManager {
         }.generateKey()
     }
 
+    @Throws(
+        IllegalStateException::class,
+        javax.crypto.IllegalBlockSizeException::class,
+        javax.crypto.BadPaddingException::class,
+        java.io.IOException::class,
+        javax.crypto.AEADBadTagException::class
+    )
     fun encrypt(bytes: ByteArray, outputStream: OutputStream): ByteArray {
-        val encryptedBytes = encryptCipher.doFinal(bytes)
+        val cipher = initEncryptCipher() as Cipher
+        val encryptedBytes = cipher.doFinal(bytes)
         /*
         common way is to append iv in front of output stream
          */
         outputStream.use {
-            it.write(encryptCipher.iv.size)
-            it.write(encryptCipher.iv)
+            it.write(cipher.iv.size)
+            it.write(cipher.iv)
             it.write(encryptedBytes.size)
             it.write(encryptedBytes)
         }
@@ -63,6 +73,13 @@ class CryptoManager {
         return encryptedBytes
     }
 
+    @Throws(
+        IllegalStateException::class,
+        javax.crypto.IllegalBlockSizeException::class,
+        javax.crypto.BadPaddingException::class,
+        java.io.IOException::class,
+        javax.crypto.AEADBadTagException::class
+    )
     fun decrypt(inputStream: InputStream): ByteArray {
         return inputStream.use {
             val ivSize = it.read()
